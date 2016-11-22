@@ -101,6 +101,11 @@ class DNSQueryHandler(SocketServer.BaseRequestHandler):
 		To handle a UDP data request(DNS query is by UDP)
 		'''
 		data = self.request[0].strip()
+		self.process(data)
+	def process(self, data):
+		'''
+		To process a UDP data request(DNS query is by UDP)
+		'''
 		dns = DNSFrame(data)
 		sock = self.request[1]
 		if(dns.query.type==1):
@@ -114,6 +119,10 @@ class DNSQueryHandler(SocketServer.BaseRequestHandler):
 			# else, ignore it, because can't handle it
 			sock.sendto(data, self.client_address)
 
+	def feedback(self, data):
+		if data:
+			sock = self.request[1]
+			sock.sendto(data, self.client_address)
 
 class DNSServer(SocketServer.ThreadingMixIn, SocketServer.UDPServer):
 	'''
@@ -137,4 +146,3 @@ if __name__ == "__main__":
 
 # Now, U can use "nslookup" command to test it
 # Such as "nslookup - 127.0.0.1" or "nslookup www.aa.com 127.0.0.1"
-
