@@ -28,33 +28,33 @@ configs = {
 }
 
 class FilterHandler(DNSQueryHandler):
-	def when_query_sub(self, hostname, dns, rawdata, sock, cfg):
-		for p, v in cfg.items():
-			if p == hostname or re.match(p, hostname):
-				if v == 'deny':
-					return
-				elif v == 'allow':
-					ip = self.queryip(hostname)
-				else:
-					ip = v
-				print '%s %s %s'%(self.client_address[0], hostname, ip)
-				return ip
-
-	def when_query(self, hostname, dns, rawdata, sock):
-		src = self.client_address[0]
-		ip = None
-		if src in configs :
-			ip = self.when_query_sub(hostname, dns, rawdata, sock, configs[src])
-		if ip is None :
-			ip = self.when_query_sub(hostname, dns, rawdata, sock, configs['*'])
-		return ip
-
 	def handle(self):
 		data = self.request[0].strip()
 		if data.startswith('DNSCFG/'):
 			self.feedback(editConfig(data))
 		else:
 			self.process(data)
+
+	def when_query(self, hostname, dns, rawdata, sock):
+		src = self.client_address[0]
+		ip = None
+		if src in configs:
+			ip = self.when_query_sub(hostname, dns, rawdata, sock, configs[src])
+		if ip is None:
+			ip = self.when_query_sub(hostname, dns, rawdata, sock, configs['*'])
+		if ip is None:
+			ip = self.queryip(hostname)
+		print '%s\t%s -> %s'%(src, hostname, ip)
+		if ip == 'deny':
+			return
+		return ip
+
+	def when_query_sub(self, hostname, dns, rawdata, sock, cfg):
+		for key, val in cfg.items():
+			if key == hostname or re.match(key, hostname):
+				if val == 'allow':
+					return self.queryip(hostname)
+				return val
 
 def editConfig(data):
 	'''
@@ -106,14 +106,23 @@ def loadConfigs():
 				p = rs[0][0]
 				m = rs[0][1]
 				s = rs[0][2]
-				print '%s -> %s -> %s'%(p,m,s)
+				print '  cfg: %s -> %s -> %s'%(p,m,s)
 				if s not in configs :
 					configs[s] = {}
 				configs[s][p] = m
 			except:
 				print 'err line: %s'%l
-	print '----------------------------------------'
+
 	print 'configs = ', configs
+	dumpConfigs();
+
+def dumpConfigs():
+	global configs
+	print '-configs--------------------------------'
+	for src, cfg in configs.items():
+		print src, ':'
+		for name, ip in cfg.items():
+			print '  %s -> %s'%(name, ip)
 	print '----------------------------------------'
 
 def startDnsService():
