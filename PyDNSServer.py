@@ -52,7 +52,6 @@ class DNSAnswer:
 		res = res + struct.pack('BBBB', int(s[0]), int(s[1]), int(s[2]), int(s[3]))
 		return res
 
-
 class DNSFrame:
 	'''
 	DNS frame,

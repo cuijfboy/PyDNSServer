@@ -12,20 +12,7 @@ import thread
 import os
 import time
 
-configs = {
-	'192.168.1.100': {
-		'baidu.com': 'allow',
-		'360.com': 'deny',
-		'qq.com': '192.168.0.100',
-		'.*': 'deny',
-	},
-	'192.168.1.101': {
-		'baidu.com': 'allow',
-		'360.com': 'deny',
-		'qq.com': '192.168.0.100',
-		'.*': 'deny',
-	}
-}
+configs = {}
 
 class FilterHandler(DNSQueryHandler):
 	def handle(self):
@@ -58,16 +45,18 @@ class FilterHandler(DNSQueryHandler):
 
 def editConfig(data):
 	'''
+	DNSCFG/SET/hostname|pattern/ip|allow|deny/source
 	echo 'DNSCFG/SET/www.sina.com/192.168.111.233/192.168.13.111' | nc 127.0.0.1 53 -u
 	'''
 	global configs
-	print 'editConfig (before) = ', configs
+	# print 'editConfig (before) = ', configs
 
 	pieces = data.split('/')
 	print pieces
 	cmd = pieces[1]
 	feed = 'FAIL'
 
+	# DNSCFG/SET/hostname|pattern/ip|allow|deny/source
 	# DNSCFG/SET/www.sina.com/192.168.111.233/192.168.13.111
 	if cmd == 'SET' and len(pieces) >= 5:
 		src = pieces[4]
@@ -76,6 +65,7 @@ def editConfig(data):
 		configs[src][pieces[2]] = pieces[3]
 		feed = 'SUCC'
 
+	# DNSCFG/DEL/hostname|pattern/source
 	# DNSCFG/DEL/*/192.168.13.111
 	elif cmd == 'DEL' and len(pieces) >= 4:
 		src = pieces[3]
@@ -85,9 +75,12 @@ def editConfig(data):
 				del configs[src]
 			else:
 				del configs[src][name]
+			if src == '*' :
+				configs['*'] = {}
 		feed = 'SUCC'
 
-	print 'editConfig (after) = ', configs
+	print 'After editConfig:'
+	dumpConfigs()
 	feedStr = feed + '/' + data
 	return feedStr
 
@@ -113,17 +106,17 @@ def loadConfigs():
 			except:
 				print 'err line: %s'%l
 
-	print 'configs = ', configs
+	# print 'configs = ', configs
 	dumpConfigs();
 
 def dumpConfigs():
 	global configs
-	print '-configs--------------------------------'
+	print '*************** CONFIGS **************'
 	for src, cfg in configs.items():
 		print src, ':'
 		for name, ip in cfg.items():
 			print '  %s -> %s'%(name, ip)
-	print '----------------------------------------'
+	print '**************************************'
 
 def startDnsService():
 	loadConfigs()
@@ -136,10 +129,14 @@ from flask import Flask
 from flask import request
 web = Flask(__name__)
 
+# http://192.168.10.30:9999/
 @web.route('/')
 def hello_world():
     return 'Hello World, I\'m PyDnsServer !'
 
+# /config?data=DNSCFG/SET/hostname|pattern/ip|allow|deny/source
+# /config?data=DNSCFG/DEL/hostname|pattern/source
+# http://192.168.10.30:9999/config?data=DNSCFG/SET/www.sina.com/192.168.111.233/192.168.13.111
 @web.route('/config')
 def config():
  	data = request.args.get('data').encode('ascii')
