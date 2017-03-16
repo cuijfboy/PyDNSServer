@@ -46,3 +46,13 @@ www.qq.com 192.168.0.100
 > \> nslookup www.baidu.com 1270.0.0.1
 
 > \> nslookup www.360.com 1270.0.0.1
+
+---
+
+# Usage
+
+```
+brew install pip
+pip install flask
+sudo python RunMain.py
+```
